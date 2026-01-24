@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "826258509624",
+    "project_id": "who-logbook",
+    "storage_bucket": "who-logbook.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:826258509624:android:a70abf17783760e2c13bcd",
+        "android_client_info": {
+          "package_name": "com.onelinesolutionltd.who_logbook"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "826258509624-teblf9lcvkbmsatg3vppb9so7ubaunfp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa-9sWqHbDeg9hLB_tFByaw53yohaJ1eA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "826258509624-teblf9lcvkbmsatg3vppb9so7ubaunfp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
