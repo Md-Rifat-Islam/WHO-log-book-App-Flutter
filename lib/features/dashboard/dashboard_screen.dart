@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/app_user.dart';
@@ -16,7 +17,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const Color tealWater = Color(0xFF0B6E69);
+  static const Color tealWater = AppAssets.tealWater;
   static const Color bgColor = Color(0xFFF7F8FA);
 
   late Future<List<_DashBtn>> _buttonsFuture;
@@ -24,7 +25,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize the future once to prevent reloading on every build
     final user = SessionStore.instance.currentUser;
     if (user != null) {
       _buttonsFuture = _buildButtons(user);
@@ -32,7 +32,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- 1. CLEANED VIBRANT GRADIENTS ---
-  Gradient _getLogTypeGradient(String logType) {
+  Gradient _getLogTypeGradient(String logType, String eventType) {
+    if (eventType == EventTypes.flooded) {
+      return const LinearGradient(colors: [Color(0xFF009688), Color(0xFF4DB6AC)]);
+    }
+    if (eventType == EventTypes.new_connection) {
+      return const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)]);
+    }
+
     switch (logType) {
       case LogTypes.daily:
         return const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF00BCD4)]);
@@ -44,12 +51,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFFFF5252)]);
       case LogTypes.halfYearly:
         return const LinearGradient(colors: [Color(0xFF3F51B5), Color(0xFF5C6BC0)]);
-      case LogTypes.treatmentPlant:
-        return const LinearGradient(colors: [Color(0xFF021B79), Color(0xFF0575E6)]);
-      case LogTypes.newConnection:
-        return const LinearGradient(colors: [Color(0xFF9C27B0), Color(0xFFE040FB)]);
-      case LogTypes.flood:
-        return const LinearGradient(colors: [Color(0xFF009688), Color(0xFF4DB6AC)]);
       default:
         return LinearGradient(colors: [Colors.blueGrey.shade600, Colors.blueGrey.shade800]);
     }
@@ -76,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final template = await TemplateService().fetchActiveTemplate(
         roleId: user.roleId,
-        districtId: user.districtId?.toLowerCase() ?? '', // Ensure lowercase match
+        districtId: user.districtId?.toLowerCase() ?? '',
         logType: logType,
         eventType: eventType,
       );
@@ -88,36 +89,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<List<_DashBtn>> _buildButtons(AppUser user) async {
     final buttons = <_DashBtn>[];
-    const eventType = EventTypes.general;
 
-    Future<void> addLogBtn(String title, String subtitle, IconData icon, String logType) async {
+    Future<void> addLogBtn({
+      required String title,
+      required String subtitle,
+      required IconData icon,
+      required String logType,
+      String eventType = EventTypes.general
+    }) async {
       final exists = await _templateExists(user: user, logType: logType, eventType: eventType);
       if (exists) {
         buttons.add(_DashBtn(
           title: title, subtitle: subtitle, icon: icon, route: '/log',
-          gradient: _getLogTypeGradient(logType),
+          gradient: _getLogTypeGradient(logType, eventType),
           extra: {'logType': logType, 'eventType': eventType},
         ));
       }
     }
 
+    // Parallel check for performance
     await Future.wait([
-      addLogBtn('Daily', 'দৈনিক লগ', Icons.today, LogTypes.daily),
-      addLogBtn('Weekly', 'সাপ্তাহিক লগ', Icons.view_week, LogTypes.weekly),
-      addLogBtn('Monthly', 'মাসিক লগ', Icons.calendar_month, LogTypes.monthly),
-      addLogBtn('Quarterly', 'ত্রৈমাসিক লগ', Icons.date_range, LogTypes.quarterly),
-      addLogBtn('Half-Yearly', 'ষাণ্মাসিক লগ', Icons.event_note, LogTypes.halfYearly),
-      addLogBtn('Treatment Plant', 'ট্রিটমেন্ট প্ল্যান্ট', Icons.factory, LogTypes.treatmentPlant),
-      addLogBtn('New Connection', 'নতুন সংযোগ', Icons.add_link, LogTypes.newConnection),
-      addLogBtn('Flood/Emergency', 'বন্যা/জরুরী', Icons.flood, LogTypes.flood),
+      addLogBtn(title: 'Daily', subtitle: 'দৈনিক লগ', icon: Icons.today, logType: LogTypes.daily),
+      addLogBtn(title: 'Weekly', subtitle: 'সাপ্তাহিক লগ', icon: Icons.view_week, logType: LogTypes.weekly),
+      addLogBtn(title: 'Monthly', subtitle: 'মাসিক লগ', icon: Icons.calendar_month, logType: LogTypes.monthly),
+      addLogBtn(title: 'Quarterly', subtitle: 'ত্রৈমাসিক লগ', icon: Icons.date_range, logType: LogTypes.quarterly),
+      addLogBtn(title: 'Half-Yearly', subtitle: 'ষাণ্মাসিক লগ', icon: Icons.event_note, logType: LogTypes.halfYearly),
+
+      // Fixed: Using constants from your updated file
+      addLogBtn(title: 'New Connection', subtitle: 'নতুন সংযোগ', icon: Icons.add_link, logType: LogTypes.daily, eventType: EventTypes.new_connection),
+      addLogBtn(title: 'Flood/Emergency', subtitle: 'বন্যা/জরুরী', icon: Icons.flood, logType: LogTypes.daily, eventType: EventTypes.flooded),
     ]);
 
+    // History is always available
     buttons.add(_DashBtn(
       title: 'History', subtitle: 'জমা দেওয়া লগ', icon: Icons.history, route: '/history',
       gradient: LinearGradient(colors: [Colors.blueGrey.shade600, Colors.blueGrey.shade900]),
     ));
 
-    if (user.roleId.toLowerCase() == 'admin' || (user.roleId.toLowerCase() == 'supervisor' && user.permissions['canApprove'] == true)) {
+    // Admin/Supervisor specific buttons using RoleIds constant
+    bool isAdmin = user.roleId == RoleIds.admin;
+    bool isSupervisor = user.roleId == RoleIds.supervisor;
+
+    if (isAdmin || (isSupervisor && user.permissions['canApprove'] == true)) {
       buttons.add(_DashBtn(
         title: 'Review', subtitle: 'লগ যাচাইকরণ', icon: Icons.verified_user_outlined, route: '/review',
         gradient: const LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF000000)]),
@@ -138,7 +151,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         foregroundColor: Colors.black87,
         elevation: 0.5,
         toolbarHeight: 95,
-        // --- ADDED THE RED LINE LOADER HERE ---
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(3.0),
           child: FutureBuilder(
@@ -146,8 +158,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const LinearProgressIndicator(
-                  backgroundColor: Color(0xFF006A4E), // BD Green
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF42A41)), // BD Red
+                  backgroundColor: AppAssets.bdGreen,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppAssets.bdRed),
                   minHeight: 3,
                 );
               }
@@ -182,27 +194,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         actions: [
-          // --- NOTIFICATION BUTTON ---
           IconButton(
             icon: Badge(
               label: const Text('2', style: TextStyle(color: Colors.white, fontSize: 10)),
-              backgroundColor: const Color(0xFFF42A41), // BD Red for attention
-              child: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: Color(0xFF0B6E69), // Teal-Water
-                  size: 28
-              ),
+              backgroundColor: AppAssets.bdRed,
+              child: const Icon(Icons.notifications_none_rounded, color: tealWater, size: 28),
             ),
             onPressed: () => context.push('/notifications'),
           ),
-
-          // --- LOGOUT BUTTON ---
           IconButton(
-            icon: const Icon(
-                Icons.power_settings_new_rounded,
-                color: Color(0xFFF42A41), // Red for logout
-                size: 28
-            ),
+            icon: const Icon(Icons.power_settings_new_rounded, color: AppAssets.bdRed, size: 28),
             onPressed: () async {
               final confirm = await _showLogoutDialog(context);
               if (confirm == true) {
@@ -246,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(color: tealWater),
+          const CircularProgressIndicator(color: tealWater),
           const SizedBox(height: 16),
           const Text('তথ্য লোড হচ্ছে...', style: TextStyle(color: tealWater, fontWeight: FontWeight.w500)),
         ],

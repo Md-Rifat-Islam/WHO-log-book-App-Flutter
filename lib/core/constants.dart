@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Asset and Brand Colors
 class AppAssets {
   static const String logo = 'assets/images/app_logo.png';
-
-  // Bangladesh Flag Inspired Branding
   static const Color bdGreen = Color(0xFF006A4E);
   static const Color bdRed = Color(0xFFF42A41);
   static const Color tealWater = Color(0xFF0B6E69);
 }
 
-/// Firestore Collection Names
 class Collections {
   static const users = 'users';
   static const logs = 'logs';
@@ -19,7 +15,7 @@ class Collections {
   static const districts = 'districts';
 }
 
-/// Types of Logs (Mapped to official WHO Water Safety Plan categories)
+/// ১. LogTypes: এটি শুধুমাত্র টাইম পিরিয়ড নির্দেশ করবে
 class LogTypes {
   static const daily = 'daily';
   static const weekly = 'weekly';
@@ -28,18 +24,28 @@ class LogTypes {
   static const halfYearly = 'half_yearly';
   static const yearly = 'yearly';
 
-  // Specialized Operational Logs
-  static const flood = 'flood';             // বন্যাকালীন লগ
-  static const newConnection = 'new_conn';  // নতুন সংযোগ লগ
-  static const treatmentPlant = 'wtp_log';  // পানি শোধন প্ল্যান্ট লগ
-
-  static const all = [
-    daily, weekly, monthly, quarterly,
-    halfYearly, yearly, flood, newConnection, treatmentPlant
-  ];
+  static const all = [daily, weekly, monthly, quarterly, halfYearly, yearly];
 }
 
-/// Status of a Log Entry
+/// ২. EventTypes: এটি রিপোর্ট বা ফর্মের ধরন নির্দেশ করবে
+class EventTypes {
+  static const general = 'general';
+  static const flooded = 'flooded';
+  static const new_connection = 'new_connection';
+// treatment_plant removed as per instruction
+}
+
+/// ৩. RoleIds: আপনার ডাটাবেসের roleId ফিল্ডের সাথে মিলবে (সঠিক জায়গা)
+class RoleIds {
+  static const admin = 'admin';
+  static const supervisor = 'supervisor';
+  static const pump_operator = 'pump_operator';
+  static const pipeline_mechanic = 'pipeline_mechanic';
+  static const wtp_operator = 'wtp_operator';
+  static const sanitary_inspector = 'sanitary_inspector';
+  static const bill_distributor = 'bill_distributor';
+}
+
 class LogStatus {
   static const pending = 'Pending';
   static const approved = 'Approved';
@@ -56,18 +62,7 @@ class LogStatus {
         return Colors.blueGrey;
       case pending:
       default:
-        return const Color(0xFFF9A825); // Elegant Amber
+        return const Color(0xFFF9A825);
     }
   }
-}
-
-/// Designation-based Event Types
-class EventTypes {
-  static const general = 'general';
-  static const pumpOperator = 'pump_operator';
-  static const pipelineMechanic = 'pipeline_mechanic';
-  static const sanitaryInspector = 'sanitary_inspector';
-  static const billDistributor = 'bill_distributor';
-  static const waterSuperintendent = 'water_superintendent';
-  static const plantOperator = 'plant_operator';
 }

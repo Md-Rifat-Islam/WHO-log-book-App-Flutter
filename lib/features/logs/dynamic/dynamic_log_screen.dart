@@ -210,64 +210,93 @@ class _DynamicLogScreenState extends State<DynamicLogScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white, // Setting to White as requested
-        foregroundColor: tealWater,
-        elevation: 0.5,
-        toolbarHeight: 85,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+        toolbarHeight: 90,
         centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
-          onPressed: () => context.pop(),
+        // --- কাস্টম ব্যাক বাটন বামপাশে ---
+        leadingWidth: 72,
+        leading: Center(
+          child: IconButton(
+            style: IconButton.styleFrom(
+              backgroundColor: tealWater.withOpacity(0.08),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.all(10),
+            ),
+            icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: tealWater),
+            onPressed: () => context.pop(),
+          ),
         ),
-        title: Row(
+        // --- টাইটেল সেকশন ---
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // --- LOGO (Teal version for White AppBar) ---
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: tealWater.withOpacity(0.1), // Subtle teal background
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/app_logo.png',
-                  fit: BoxFit.cover,
-                  width: 38,
-                  height: 38,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                      Icons.water_drop_rounded,
-                      color: tealWater,
-                      size: 24
-                  ),
-                ),
+            Text(
+              t.titleBn,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 19,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: -0.4,
               ),
             ),
-            const SizedBox(width: 12),
-            // --- BOLD TITLE & USER CONTEXT ---
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    t.titleBn, // Bangla title from template
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 19,
-                      color: Colors.black, // High contrast text
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    '${user.name} (${user.districtId})',
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    user.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: tealWater.withOpacity(0.7),
+                      fontWeight: FontWeight.w600,
+                      color: tealWater.withOpacity(0.8),
                     ),
                   ),
-                ],
-              ),
+                ),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  width: 3,
+                  height: 3,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: tealWater.withOpacity(0.4)),
+                ),
+                Text(
+                  (user.districtId ?? '').toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+        // --- লোগো স্টাইল (আপনার দেওয়া কোড অনুযায়ী) ---
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: tealWater.withOpacity(0.1),
+              child: ClipOval(
+                child: Image.asset(
+                  AppAssets.logo,
+                  fit: BoxFit.cover,
+                  width: 38,
+                  height: 38,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Icon(Icons.water_drop_rounded, color: tealWater, size: 24),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,

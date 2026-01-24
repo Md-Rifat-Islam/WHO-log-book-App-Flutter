@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'core/auth/auth_gate.dart';
+import 'core/constants.dart';
 import 'core/router/go_router_refresh_stream.dart';
 import 'features/auth/login_screen.dart';
 import 'features/bootstrap/bootstrap_screen.dart';
@@ -122,15 +123,25 @@ class WhoLogApp extends StatelessWidget {
         // Elegant AppBar Theme
         appBarTheme: AppBarTheme(
           backgroundColor: Colors.white,
-          foregroundColor: primaryTeal,
+          foregroundColor: AppAssets.tealWater,
           elevation: 0,
-          centerTitle: true,
+          scrolledUnderElevation: 0.5, // স্ক্রল করলে হালকা শ্যাডো আসবে
+          toolbarHeight: 80,
+          centerTitle: false, // বাঁদিকের এলাইনমেন্ট সাধারণত বেশি মডার্ন দেখায়
+          iconTheme: const IconThemeData(
+            color: AppAssets.tealWater,
+            size: 22,
+          ),
           titleTextStyle: GoogleFonts.notoSansBengali(
             fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: primaryTeal,
+            fontWeight: FontWeight.w800, // একটু বোল্ড টাইটেল
+            color: Colors.black87,
+            letterSpacing: -0.5,
           ),
-          iconTheme: const IconThemeData(color: primaryTeal),
+          // ব্যাক বাটনের জন্য ডিফল্ট শেপ এবং প্যাডিং
+          actionsIconTheme: const IconThemeData(
+            color: AppAssets.tealWater,
+          ),
         ),
 
         // Modern Card Theme for dashboard and log sections

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/constants.dart';
 import '../../core/firebase_refs.dart';
 import '../../stores/session_store.dart';
 
@@ -13,43 +15,49 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  // Theme Colors
   static const Color tealWater = Color(0xFF0B6E69);
   static const Color bgColor = Color(0xFFF7F8FA);
 
-  // Filters
   String? _logType;
   String? _status;
   String? _eventType;
   DateTimeRange? _range;
 
-  // --- Display maps ---
-  static const Map<String, String> _logTypeBn = {
-    'daily': 'দৈনিক',
-    'weekly': 'সাপ্তাহিক',
-    'monthly': 'মাসিক',
-    'quarterly': 'ত্রৈমাসিক',
-    'half_yearly': 'ষান্মাসিক',
-    'yearly': 'বার্ষিক',
-    'flood': 'বন্যা',
-    'new_connection': 'নতুন সংযোগ',
+  final Map<String, String> _logTypeMap = {
+    LogTypes.daily: 'দৈনিক',
+    LogTypes.weekly: 'সাপ্তাহিক',
+    LogTypes.monthly: 'মাসিক',
+    LogTypes.quarterly: 'ত্রৈমাসিক',
+    LogTypes.halfYearly: 'ষান্মাসিক',
+    LogTypes.yearly: 'বার্ষিক',
   };
 
-  static const Map<String, String> _statusBn = {
-    'Pending': 'পেন্ডিং',
-    'Approved': 'অনুমোদিত',
-    'Rejected': 'বাতিল',
-    'Locked': 'লকড',
+  final Map<String, String> _eventMap = {
+    EventTypes.general: 'সাধারণ',
+    EventTypes.flooded: 'বন্যা-কালীন',
+    EventTypes.new_connection: 'নতুন সংযোগ',
   };
 
-  static const Map<String, String> _eventBn = {
-    'general': 'সাধারণ',
-    'flooded': 'বন্যা-কালীন',
-    'new_connection': 'নতুন সংযোগ',
+  final Map<String, String> _statusMap = {
+    LogStatus.pending: 'পেন্ডিং',
+    LogStatus.approved: 'অনুমোদিত',
+    LogStatus.rejected: 'বাতিল',
+    LogStatus.locked: 'লকড',
   };
 
-  Query<Map<String, dynamic>> _buildQuery(String uid) {
-    Query<Map<String, dynamic>> q = logsRef.where('userId', isEqualTo: uid);
+  Query<Map<String, dynamic>> _buildQuery() {
+    final user = SessionStore.instance.currentUser!;
+    Query<Map<String, dynamic>> q = logsRef;
+
+    bool isAuthority = user.roleId == RoleIds.admin ||
+        user.roleId == RoleIds.supervisor ||
+        user.roleId == RoleIds.wtp_operator;
+
+    if (isAuthority) {
+      q = q.where('districtId', isEqualTo: user.districtId);
+    } else {
+      q = q.where('userId', isEqualTo: user.uid);
+    }
 
     if (_logType != null) q = q.where('logType', isEqualTo: _logType);
     if (_status != null) q = q.where('status', isEqualTo: _status);
@@ -57,8 +65,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     if (_range != null) {
       final start = Timestamp.fromDate(DateTime(_range!.start.year, _range!.start.month, _range!.start.day));
-      final endExclusive = Timestamp.fromDate(DateTime(_range!.end.year, _range!.end.month, _range!.end.day).add(const Duration(days: 1)));
-      q = q.where('createdAt', isGreaterThanOrEqualTo: start).where('createdAt', isLessThan: endExclusive);
+      final end = Timestamp.fromDate(DateTime(_range!.end.year, _range!.end.month, _range!.end.day).add(const Duration(days: 1)));
+      q = q.where('createdAt', isGreaterThanOrEqualTo: start).where('createdAt', isLessThan: end);
     }
 
     return q.orderBy('createdAt', descending: true).limit(100);
@@ -67,95 +75,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final user = SessionStore.instance.currentUser;
-    if (user == null) return const Scaffold(body: Center(child: Text('No profile loaded.')));
+    if (user == null) return const Scaffold(body: Center(child: Text('No session found.')));
 
     return Scaffold(
       backgroundColor: bgColor,
-      // --- Standardized Gray AppBar ---
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
-        foregroundColor: Colors.black87,
-        elevation: 0.5,
-        toolbarHeight: 95,
-        centerTitle: false,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22, color: Colors.black87),
-          onPressed: () => context.pop(),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.white,
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/app_logo.png',
-                  fit: BoxFit.cover,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.water_drop_rounded,
-                      color: tealWater,
-                      size: 28),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'History / ইতিহাস',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      fontSize: 18,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    user.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.black.withOpacity(0.7),
-                    ),
-                  ),
-                  Text(
-                    '(${user.districtId})',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.black.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          if (_logType != null || _status != null || _eventType != null || _range != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: IconButton(
-                tooltip: 'Clear filters',
-                onPressed: () => setState(() {
-                  _logType = _status = _eventType = _range = null;
-                }),
-                icon: const Icon(Icons.filter_alt_off_rounded, color: Colors.redAccent, size: 28),
-              ),
-            ),
-        ],
-      ),
+      appBar: _buildAppBar(user),
       body: Column(
         children: [
-          _filtersBar(),
+          _buildFilterBar(), // static version
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _buildQuery(user.uid).snapshots(),
+              stream: _buildQuery().snapshots(),
               builder: (context, snap) {
                 if (snap.hasError) return _buildErrorState(snap.error.toString());
                 if (snap.connectionState == ConnectionState.waiting) {
@@ -166,7 +96,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 if (docs.isEmpty) return _buildEmptyState();
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: docs.length,
                   itemBuilder: (context, i) => _buildHistoryCard(docs[i]),
                 );
@@ -178,206 +108,265 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  // --- Enhanced Empty State ---
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  // --- UI Components below remain as you designed ---
+  PreferredSizeWidget _buildAppBar(dynamic user) {
+    return AppBar(
+      toolbarHeight: 95,
+      centerTitle: false,
+      elevation: 0,
+      scrolledUnderElevation: 0.5,
+      backgroundColor: Colors.white,
+      leadingWidth: 72,
+      leading: Center(
+        child: IconButton(
+          style: IconButton.styleFrom(
+            backgroundColor: tealWater.withOpacity(0.08),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.all(10),
+          ),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: tealWater),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
-              shape: BoxShape.circle,
+          Text(
+            'History / ইতিহাস',
+            style: GoogleFonts.notoSansBengali(
+              fontWeight: FontWeight.bold,
+              fontSize: 19,
+              color: const Color(0xFF1A1A1A),
+              letterSpacing: -0.4,
             ),
-            child: Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'কোন তথ্য পাওয়া যায়নি',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'আপনার ফিল্টার পরিবর্তন করে পুনরায় চেষ্টা করুন।',
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-          if (_logType != null || _status != null || _eventType != null || _range != null) ...[
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => setState(() {
-                _logType = _status = _eventType = _range = null;
-              }),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: tealWater,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  user.name ?? 'Unknown',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: tealWater.withOpacity(0.8),
+                  ),
+                ),
               ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('ফিল্টার মুছে ফেলুন'),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                width: 3,
+                height: 3,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: tealWater.withOpacity(0.4)),
+              ),
+              Text(
+                (user.districtId ?? '').toUpperCase(),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        if (_logType != null || _status != null || _eventType != null || _range != null)
+          IconButton(
+            tooltip: 'রিসেট ফিল্টার',
+            onPressed: () => setState(() => _logType = _status = _eventType = _range = null),
+            icon: const Icon(Icons.filter_alt_off_rounded, color: Colors.redAccent),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: CircleAvatar(
+            radius: 24,
+            backgroundColor: tealWater.withOpacity(0.1),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                fit: BoxFit.cover,
+                width: 38,
+                height: 38,
+                errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.water_drop_rounded, color: tealWater, size: 24),
+              ),
             ),
-          ]
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          _filterChip(label: 'লগ টাইপ', value: _logType, items: _logTypeMap, onSelected: (v) => setState(() => _logType = v)),
+          _filterChip(label: 'স্ট্যাটাস', value: _status, items: _statusMap, onSelected: (v) => setState(() => _status = v)),
+          _filterChip(label: 'ইভেন্ট', value: _eventType, items: _eventMap, onSelected: (v) => setState(() => _eventType = v)),
+          _dateRangeChip(),
         ],
       ),
     );
   }
 
-  // --- Enhanced Error State ---
-  Widget _buildErrorState(String err) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.redAccent),
-            const SizedBox(height: 16),
-            const Text('সার্ভার ত্রুটি ঘটেছে', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(err, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.red.shade300)),
-            const SizedBox(height: 24),
-            TextButton.icon(
-              onPressed: () => setState(() {}),
-              icon: const Icon(Icons.replay_rounded),
-              label: const Text('আবার চেষ্টা করুন'),
-            ),
-          ],
+  Widget _filterChip({required String label, required String? value, required Map<String, String> items, required Function(String?) onSelected}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+      child: PopupMenuButton<String?>(
+        onSelected: onSelected,
+        itemBuilder: (ctx) => [
+          const PopupMenuItem(value: null, child: Text('সবগুলো (All)')),
+          ...items.entries.map((e) => PopupMenuItem(value: e.key, child: Text(e.value)))
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: value != null ? tealWater : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: value != null ? tealWater : Colors.grey.shade300),
+            boxShadow: value != null ? [BoxShadow(color: tealWater.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))] : null,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            children: [
+              Text(
+                value == null ? label : (items[value] ?? label),
+                style: TextStyle(color: value != null ? Colors.white : Colors.black87, fontSize: 12),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.keyboard_arrow_down_rounded, color: value != null ? Colors.white : Colors.grey, size: 18),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _dateRangeChip() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: ActionChip(
+        backgroundColor: _range != null ? tealWater : Colors.white,
+        avatar: Icon(Icons.calendar_month, size: 16, color: _range != null ? Colors.white : tealWater),
+        label: Text(_range == null ? 'তারিখ' : '${_range!.start.day}/${_range!.start.month} - ${_range!.end.day}/${_range!.end.month}',
+            style: TextStyle(color: _range != null ? Colors.white : Colors.black87, fontSize: 13)),
+        onPressed: _pickRange,
       ),
     );
   }
 
   Widget _buildHistoryCard(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final m = doc.data();
-    final status = m['status']?.toString() ?? 'Pending';
+    final status = m['status']?.toString() ?? LogStatus.pending;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.black.withOpacity(0.03)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 4))],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
         onTap: () => context.push('/log-view/${doc.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              _buildTypeIcon(m['logType']?.toString()),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_bnLogType(m['logType'] ?? '')} • ${_bnEvent(m['eventType'] ?? 'general')}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('Period: ${m['periodKey']}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                    Text('Submitted: ${_prettyTimestamp(m['createdAt'])}', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                  ],
-                ),
-              ),
-              _statusBadge(status),
-            ],
-          ),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: tealWater.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          child: Icon(_getIcon(m['logType']), color: tealWater),
         ),
+        title: Text(
+          '${_logTypeMap[m['logType']] ?? 'Unknown'} • ${_eventMap[m['eventType']] ?? 'General'}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text('Period: ${m['periodKey'] ?? '-'}', style: const TextStyle(fontSize: 13)),
+            Text(_prettyTimestamp(m['createdAt']), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            if (m['userName'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text('By: ${m['userName']}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: tealWater)),
+              ),
+          ],
+        ),
+        trailing: _statusBadge(status),
       ),
-    );
-  }
-
-  Widget _buildTypeIcon(String? type) {
-    IconData icon = Icons.description_outlined;
-    if (type == 'daily') icon = Icons.today;
-    if (type == 'flood') icon = Icons.water_drop_outlined;
-
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: tealWater.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-      child: Icon(icon, color: tealWater, size: 24),
     );
   }
 
   Widget _statusBadge(String s) {
-    Color color = Colors.orange;
-    if (s == 'Approved') color = Colors.green;
-    if (s == 'Rejected') color = Colors.red;
-    if (s == 'Locked') color = Colors.blueGrey;
-
+    final color = LogStatus.getStatusColor(s);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-      child: Text(_bnStatus(s), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+      child: Text(_statusMap[s] ?? s, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11)),
     );
   }
 
-  Widget _filtersBar() {
-    return Container(
-      color: Colors.white,
-      height: 60,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+  IconData _getIcon(String? type) {
+    if (type == LogTypes.daily) return Icons.today;
+    if (type == LogTypes.weekly) return Icons.date_range;
+    return Icons.description_outlined;
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _filterChip(label: 'Log Type', value: _logType, items: _logTypeBn.keys.toList(), display: _bnLogType, onSelected: (v) => setState(() => _logType = v)),
-          _filterChip(label: 'Status', value: _status, items: _statusBn.keys.toList(), display: _bnStatus, onSelected: (v) => setState(() => _status = v)),
-          _filterChip(label: 'Event', value: _eventType, items: _eventBn.keys.toList(), display: _bnEvent, onSelected: (v) => setState(() => _eventType = v)),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-            child: ActionChip(
-              backgroundColor: _range != null ? tealWater : Colors.white,
-              label: Text(_range == null ? 'Date' : _rangeLabel(), style: TextStyle(color: _range != null ? Colors.white : Colors.black87)),
-              avatar: Icon(Icons.calendar_month, size: 16, color: _range != null ? Colors.white : tealWater),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
-              onPressed: _pickRange,
-            ),
-          ),
+          Icon(Icons.search_off_rounded, size: 80, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text('কোন তথ্য পাওয়া যায়নি', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54)),
+          const SizedBox(height: 8),
+          const Text('অন্য ফিল্টার দিয়ে চেষ্টা করুন।', style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
   }
 
-  Widget _filterChip({required String label, required String? value, required List<String> items, required String Function(String) display, required Function(String?) onSelected}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-      child: PopupMenuButton<String?>(
-        onSelected: onSelected,
-        itemBuilder: (ctx) => [
-          const PopupMenuItem(value: null, child: Text('All')),
-          ...items.map((e) => PopupMenuItem(value: e, child: Text(display(e))))
-        ],
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: value != null ? tealWater : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: value != null ? tealWater : Colors.grey.shade300),
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            children: [
-              Text(value == null ? label : display(value), style: TextStyle(color: value != null ? Colors.white : Colors.black87, fontSize: 13)),
-              const SizedBox(width: 4),
-              Icon(Icons.arrow_drop_down, color: value != null ? Colors.white : Colors.grey, size: 18),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildErrorState(String err) => Center(child: Padding(
+    padding: const EdgeInsets.all(20.0),
+    child: Text('Error: $err', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+  ));
 
-  String _bnLogType(String v) => _logTypeBn[v] ?? v;
-  String _bnStatus(String v) => _statusBn[v] ?? v;
-  String _bnEvent(String v) => _eventBn[v] ?? v;
-  String _rangeLabel() => '${_range!.start.day}/${_range!.start.month} - ${_range!.end.day}/${_range!.end.month}';
-  String _prettyTimestamp(dynamic ts) => ts is Timestamp ? '${ts.toDate().day}/${ts.toDate().month}/${ts.toDate().year} ${ts.toDate().hour}:${ts.toDate().minute}' : '-';
+  String _prettyTimestamp(dynamic ts) {
+    if (ts is Timestamp) {
+      final d = ts.toDate();
+      return '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
+    }
+    return '-';
+  }
 
   Future<void> _pickRange() async {
-    final picked = await showDateRangePicker(context: context, firstDate: DateTime(2023), lastDate: DateTime.now());
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(primary: tealWater),
+          ),
+          child: child!,
+        );
+      },
+    );
     if (picked != null) setState(() => _range = picked);
   }
 }

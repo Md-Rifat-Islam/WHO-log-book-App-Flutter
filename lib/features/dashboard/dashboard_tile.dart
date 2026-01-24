@@ -8,7 +8,7 @@ import '../../stores/session_store.dart';
 import '../../core/constants.dart';
 import '../../services/template_service.dart';
 
-// --- 1. DASHBOARD TILE (Your Optimized Design) ---
+// --- 1. DASHBOARD TILE ---
 class DashTile extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -62,18 +62,37 @@ class DashTile extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Spacer এর বদলে এটি ব্যবহার করুন
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(6), // ৮ থেকে কমিয়ে ৬ করুন জায়গা বাঁচাতে
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, size: 22, color: Colors.white),
+                        child: Icon(icon, size: 20, color: Colors.white), // সাইজ ২২ থেকে ২০ করুন
                       ),
-                      const Spacer(),
-                      Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-                      Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.9))),
+                      // Spacer() এর বদলে এই Flexible ব্যবহার করুন যা টেক্সট বেশি হলে জায়গা ম্যানেজ করবে
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1, // টেক্সট যাতে এক লাইনের বেশি না হয়
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white), // ফন্ট ১৫ থেকে ১৪ করুন
+                            ),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.9)), // ফন্ট ১১ থেকে ১০ করুন
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -86,7 +105,7 @@ class DashTile extends StatelessWidget {
   }
 }
 
-// --- 2. MAIN DASHBOARD SCREEN (Sliver + Dynamic Logic) ---
+// --- 2. MAIN DASHBOARD SCREEN ---
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -95,10 +114,9 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const Color tealWater = Color(0xFF0B6E69);
+  static const Color tealWater = AppAssets.tealWater; // Using your constant color
   static const Color bgColor = Color(0xFFF7F8FA);
 
-  // Helper class for building buttons
   late Future<List<_DashBtnData>> _dynamicButtons;
 
   @override
@@ -110,43 +128,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Logic to check Firestore for which buttons to show
+  /// Logic to check Firestore for which buttons to show based on Role & District
   Future<List<_DashBtnData>> _fetchAvailableTemplates(AppUser user) async {
     final List<_DashBtnData> buttons = [];
-    const eventType = "general"; // Matches your DB eventType
 
-    Future<void> check(String title, String sub, IconData icon, String type, List<Color> colors) async {
-      print("Checking: Role: ${user.roleId}, Dist: ${user.districtId}, Type: $type");
-
+    Future<void> check({
+      required String title,
+      required String sub,
+      required IconData icon,
+      required String logType,
+      required String eventType,
+      required List<Color> colors
+    }) async {
       final template = await TemplateService().fetchActiveTemplate(
         roleId: user.roleId,
         districtId: user.districtId?.toLowerCase() ?? '',
-        logType: type,
+        logType: logType,
         eventType: eventType,
       );
 
       if (template != null) {
-        print("✅ Found $type for ${user.roleId}");
         buttons.add(_DashBtnData(
-          title: title, sub: sub, icon: icon, type: type,
+          title: title,
+          sub: sub,
+          icon: icon,
+          type: logType,
+          eType: eventType,
           gradient: LinearGradient(colors: colors),
         ));
-      } else {
-        print("❌ NOT FOUND: $type. Check if isActive is true in DB.");
       }
     }
 
-    // Checking all possibilities in parallel for speed
+    // Checking available forms in parallel
     await Future.wait([
-      check('দৈনিক লগ', 'Daily Report', Icons.assignment_rounded, LogTypes.daily, [tealWater, const Color(0xFF07524E)]),
-      check('মাসিক লগ', 'Monthly Report', Icons.calendar_month, LogTypes.monthly, [const Color(0xFF4CAF50), const Color(0xFF2E7D32)]),
-      check('বন্যা রিপোর্ট', 'Flood Data', Icons.tsunami_rounded, LogTypes.flood, [const Color(0xFFE67E22), const Color(0xFFD35400)]),
-      check('নতুন সংযোগ', 'New Connection', Icons.add_link, LogTypes.newConnection, [const Color(0xFF9C27B0), const Color(0xFF6A1B9A)]),
+      // Daily Logs (General)
+      check(
+          title: 'দৈনিক লগ', sub: 'Daily Report', icon: Icons.assignment_rounded,
+          logType: LogTypes.daily, eventType: EventTypes.general,
+          colors: [tealWater, const Color(0xFF07524E)]
+      ),
+      // Monthly Logs (General)
+      check(
+          title: 'মাসিক লগ', sub: 'Monthly Report', icon: Icons.calendar_month,
+          logType: LogTypes.monthly, eventType: EventTypes.general,
+          colors: [const Color(0xFF4CAF50), const Color(0xFF2E7D32)]
+      ),
+      // Flood Report (Specific Event)
+      check(
+          title: 'বন্যা রিপোর্ট', sub: 'Flood Data', icon: Icons.tsunami_rounded,
+          logType: LogTypes.daily, eventType: EventTypes.flooded,
+          colors: [const Color(0xFFE67E22), const Color(0xFFD35400)]
+      ),
+      // New Connection (Specific Event)
+      check(
+          title: 'নতুন সংযোগ', sub: 'New Connection', icon: Icons.add_link,
+          logType: LogTypes.daily, eventType: EventTypes.new_connection,
+          colors: [const Color(0xFF9C27B0), const Color(0xFF6A1B9A)]
+      ),
     ]);
 
-    // History is always added
+    // History is always added at the end
     buttons.add(_DashBtnData(
-      title: 'ইতিহাস', sub: 'Log History', icon: Icons.manage_search_rounded, type: 'history',
+      title: 'ইতিহাস', sub: 'Log History', icon: Icons.manage_search_rounded, type: 'history', eType: '',
       gradient: const LinearGradient(colors: [Color(0xFF14A098), Color(0xFF0B6E69)]),
     ));
 
@@ -162,10 +205,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: bgColor,
       body: CustomScrollView(
         slivers: [
-          // 1. Premium Sliver Header
           _buildHeader(user),
 
-          // 2. Dynamic Grid
           FutureBuilder<List<_DashBtnData>>(
             future: _dynamicButtons,
             builder: (context, snapshot) {
@@ -191,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         icon: b.icon,
                         route: b.type == 'history' ? '/history' : '/log',
                         gradient: b.gradient,
-                        extra: b.type == 'history' ? null : {'logType': b.type, 'eventType': 'general'},
+                        extra: b.type == 'history' ? null : {'logType': b.type, 'eventType': b.eType},
                       );
                     },
                     childCount: buttons.length,
@@ -201,7 +242,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
           ),
 
-          // 3. Stats Section
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -282,10 +322,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Simple model for building the dynamic list
 class _DashBtnData {
-  final String title, sub, type;
+  final String title, sub, type, eType;
   final IconData icon;
   final Gradient gradient;
-  _DashBtnData({required this.title, required this.sub, required this.icon, required this.type, required this.gradient});
+  _DashBtnData({required this.title, required this.sub, required this.icon, required this.type, required this.eType, required this.gradient});
 }

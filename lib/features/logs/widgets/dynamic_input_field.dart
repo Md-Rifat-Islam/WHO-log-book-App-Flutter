@@ -226,8 +226,11 @@ class _DateFieldState extends State<_DateField> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialValue is DateTime) _date = widget.initialValue;
-    else if (widget.initialValue != null) _date = DateTime.tryParse(widget.initialValue.toString());
+    if (widget.initialValue is DateTime) {
+      _date = widget.initialValue;
+    } else if (widget.initialValue != null) {
+      _date = DateTime.tryParse(widget.initialValue.toString());
+    }
   }
 
   @override
