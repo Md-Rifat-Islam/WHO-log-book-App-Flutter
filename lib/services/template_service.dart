@@ -30,7 +30,7 @@ class TemplateService {
         final doc = snapshot.docs.first;
         return FormTemplate.fromMap(doc.id, doc.data());
       } else {
-        debugPrint("ℹ️ Skip: $cleanLogType ($et) not assigned to $cleanRole");
+        // debugPrint("ℹ️ Skip: $cleanLogType ($et) not assigned to $cleanRole");
       }
     } catch (e) {
       // ইনডেক্স না থাকলে এখানে লিংক আসবে, সেই লিংকে একবার ক্লিক করলেই সারাজীবনের জন্য সমাধান

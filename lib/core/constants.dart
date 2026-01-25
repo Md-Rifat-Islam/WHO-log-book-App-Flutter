@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// ignore_for_file: constant_identifier_names
 
 class AppAssets {
   static const String logo = 'assets/images/app_logo.png';
